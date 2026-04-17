@@ -1,6 +1,6 @@
 # build-scripts
 
-Build shell scripts for embedded CI/CD pipelines. Used by **generic-cicd** shared library. Scripts handle only the build step — source fetching is done by the integration manifest via `repo sync`.
+Build shell scripts for embedded CI/CD pipelines. Used by **generic-cicd** shared library. Scripts handle building and cache management — source fetching is done by the integration manifest via `repo sync`.
 
 ## Structure
 
@@ -26,7 +26,7 @@ build-scripts/
 
 - **Build only** — scripts never fetch sources. The integration manifest (`repo sync`) or git clone handles source checkout. Scripts validate that sources exist and fail fast if not.
 - **Environment-driven** — scripts read `$WORKSPACE`, `$CACHE_DIR`, and type-specific env vars (e.g., `$MACHINE`, `$IMAGE`, `$TARGET`). No hardcoded paths in the build logic.
-- **Cacheable** — Yocto uses `DL_DIR`, `SSTATE_DIR`, and `SOURCE_MIRROR_URL` (own-mirrors) for local premirror cache. AOSP uses `ccache`.
+- **Cache owner** — build scripts manage all caching (Yocto `DL_DIR`, `SSTATE_DIR`, `SOURCE_MIRROR_URL` via own-mirrors; AOSP `ccache`). The CICD pipeline does not manage cache — it only provides `$WORKSPACE` and `$WORKSPACE_ROOT`.
 - **Docker-ready** — scripts run inside Docker containers on Jenkins agents. Toolchain paths (e.g., `/opt/toolchains/`) come from the Docker image.
 
 ## Environment Variables
@@ -37,7 +37,14 @@ build-scripts/
 |----------|-------------|
 | `WORKSPACE` | Workspace root (e.g., `/var/jenkins/workspace/integration`) |
 | `WORKSPACE_ROOT` | Same as `WORKSPACE` |
-| `CACHE_DIR` | Cache directory for sstate/downloads/ccache |
+
+### Set by build scripts (from common.sh)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CACHE_DIR` | `${WORKSPACE}/cache` | Cache root for sstate/downloads/ccache |
+| `BACKUP_DIR` | `${WORKSPACE}/backup/cache` | Backup destination for caches |
+| `LOG_DIR` | `${WORKSPACE}/logs` | Build log directory |
 
 ### Yocto (`integration/yocto-build.sh`)
 
@@ -66,10 +73,17 @@ build-scripts/
 
 ## Usage
 
-Scripts are referenced in YAML pipeline configs:
+Scripts are referenced in YAML pipeline configs per build type:
 
 ```yaml
-# In project-config/projects/yocto-bsp.yml
+# In project-config/projects/yocto-bsp.yml (ci build)
+yocto:
+  buildScript: build-scripts/integration/yocto-build.sh
+  env:
+    MACHINE: raspberrypi4-64
+    IMAGE: core-image-minimal
+
+# In project-config/projects/yocto-bsp-release.yml (release build)
 yocto:
   buildScript: build-scripts/integration/yocto-build.sh
   env:
