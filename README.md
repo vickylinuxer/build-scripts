@@ -35,7 +35,7 @@ build-scripts/
 
 | Variable | Description |
 |----------|-------------|
-| `WORKSPACE` | Workspace root (e.g., `/mnt/workspace/audioi2`) |
+| `WORKSPACE` | Workspace root (e.g., `/var/jenkins/workspace/integration`) |
 | `WORKSPACE_ROOT` | Same as `WORKSPACE` |
 | `CACHE_DIR` | Cache directory for sstate/downloads/ccache |
 
